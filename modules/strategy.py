@@ -15,46 +15,51 @@ def simulate_strategy(df: pd.DataFrame, params: dict):
     df['is_5min_close'] = df.index.minute % 5 == 0
 
     for i in range(1, len(df)):
-        row_prev = df.iloc[i - 1]
+        row_prev = df.iloc[i - 5]
         row = df.iloc[i]
 
         # Only generate entries on 5-minute candles
-        if not row['is_5min_close']:
-            continue
+        if row['is_5min_close']:
 
-        if cooldown_after_loss and last_trade_time and (row.name - last_trade_time).seconds < 300:
-            continue
 
-        # Entry logic
-        long_signal = row_prev['close'] < row_prev['bb_lower'] and row['close'] > row['bb_lower'] and row['rsi'] > 30
-        short_signal = row_prev['close'] > row_prev['bb_upper'] and row['close'] < row['bb_upper'] and row['rsi'] < 70
+            if cooldown_after_loss and last_trade_time and (row.name - last_trade_time).seconds < 300:
+                continue
 
-        if len(active_trades) < max_concurrent_trades:
-            if long_signal:
-                entry_price = row['close']
-                stop_loss = entry_price * (1 - sl_pct)
-                breakeven = entry_price * 1.0007
-                breakeven_trigger = breakeven + breakeven_buffer
-                take_profit = row['sma_tp']
-                qty = risk_amount / (entry_price - stop_loss)
-                active_trades.append({
-                    'type': 'long', 'entry': entry_price, 'sl': stop_loss, 'tp': take_profit,
-                    'qty': qty, 'entry_time': row.name,
-                    'breakeven': breakeven, 'breakeven_trigger': breakeven_trigger
-                })
+            # Entry logic
+            long_signal = row_prev['open'] < row_prev['bb_lower'] and row['open'] > row['bb_lower'] and row['rsi'] > 30
+            short_signal = row_prev['open'] > row_prev['bb_upper'] and row['open'] < row['bb_upper'] and row['rsi'] < 70
+            
+            print(f'{row['minute']}: LONG SIGNAL: {long_signal}, SHORT SIGNAL: {short_signal}')
+            print(f'previous close: {row_prev['open']}, previous upper bb: {row_prev['bb_upper']}, previous lower bb:{row_prev['bb_lower']}')
+            print(f'current close: {row['open']}, current upper bb: {row['bb_upper']}, current lower bb:{row['bb_lower']}')
+            print(f'rsi: {row['rsi']}')
 
-            elif short_signal:
-                entry_price = row['close']
-                stop_loss = entry_price * (1 + sl_pct)
-                breakeven = entry_price * 0.9993
-                breakeven_trigger = breakeven - breakeven_buffer
-                take_profit = row['sma_tp']
-                qty = risk_amount / (stop_loss - entry_price)
-                active_trades.append({
-                    'type': 'short', 'entry': entry_price, 'sl': stop_loss, 'tp': take_profit,
-                    'qty': qty, 'entry_time': row.name,
-                    'breakeven': breakeven, 'breakeven_trigger': breakeven_trigger
-                })
+            if len(active_trades) < max_concurrent_trades:
+                if long_signal:
+                    entry_price = row['open']
+                    stop_loss = entry_price * (1 - sl_pct)
+                    breakeven = entry_price * 1.0007
+                    breakeven_trigger = breakeven + breakeven_buffer
+                    take_profit = row['sma_tp']
+                    qty = risk_amount / (entry_price - stop_loss)
+                    active_trades.append({
+                        'type': 'long', 'entry': entry_price, 'sl': stop_loss, 'tp': take_profit,
+                        'qty': qty, 'entry_time': row.name,
+                        'breakeven': breakeven, 'breakeven_trigger': breakeven_trigger
+                    })
+
+                elif short_signal:
+                    entry_price = row['open']
+                    stop_loss = entry_price * (1 + sl_pct)
+                    breakeven = entry_price * 0.9993
+                    breakeven_trigger = breakeven - breakeven_buffer
+                    take_profit = row['sma_tp']
+                    qty = risk_amount / (stop_loss - entry_price)
+                    active_trades.append({
+                        'type': 'short', 'entry': entry_price, 'sl': stop_loss, 'tp': take_profit,
+                        'qty': qty, 'entry_time': row.name,
+                        'breakeven': breakeven, 'breakeven_trigger': breakeven_trigger
+                    })
 
         # Manage trades on every 1-min candle
         still_open = []

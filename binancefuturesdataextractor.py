@@ -10,8 +10,8 @@ INTERVAL = "1m"
 LIMIT = 1500  # Max per request
 
 # Define start and end dates
-START_DATE = "2024-01-01 00:00:00"
-END_DATE = "2025-06-30 23:59:00"
+START_DATE = "2025-08-12 8:00:00"
+END_DATE = "2025-07-30 15:00:00"
 
 def date_to_milliseconds(date_str):
     dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
@@ -38,6 +38,7 @@ def download_data():
     current_ms = start_ms
 
     expected_candles = (end_ms - start_ms) // (60_000 * LIMIT) + 1
+
     progress_bar = tqdm(total=expected_candles, desc="Downloading SOLUSDT 1m")
 
     while current_ms < end_ms:
